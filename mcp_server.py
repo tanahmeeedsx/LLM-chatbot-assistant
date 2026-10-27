@@ -219,8 +219,22 @@ def get_github_job_log_findings(job_id: int) -> dict:
         ):
             continue
 
+        # Remove terminal colors and timestamps before deduplication.
+        message = re.sub(r"\x1b\[[0-9;]*m", "", message)
+        message = re.sub(
+            r"^\d{4}-\d{2}-\d{2}T\S+Z\s*", "", message
+        ).strip()
+
+        # Treat an echoed shell command and its output as the same finding.
+        message = re.sub(
+            r"""^echo\s+(["'])(.*?)\1\s*$""",
+            r"\2",
+            message,
+            flags=re.I,
+        )
+
         clean_message = redact(message)
-        key = (severity, clean_message)
+        key = (severity, clean_message.casefold())
         if key in seen:
             continue
         seen.add(key)
@@ -410,6 +424,99 @@ def investigate_github_actions_run(run_id: int) -> dict:
             "This version reports run metadata and failed steps.",
             "Log findings use selected annotations and patterns; they are not a complete log review.",
             "No workflow reruns, repository writes, deployments, or cloud changes are performed.",
+        ],
+    }
+
+
+
+@mcp.tool()
+def inspect_github_repository(max_files: int = 80) -> dict:
+    """Read-only inspection of the remote tanahmeeedsx/devsecops-agent GitHub repository.
+    Returns the actual file tree and selected project documentation/configuration contents.
+    Does not edit files, create commits, or trigger workflows.
+    """
+    import base64
+    import json
+    import subprocess
+
+    repository = "tanahmeeedsx/devsecops-agent"
+    max_files = max(1, min(max_files, 100))
+
+    def gh_api(endpoint: str) -> dict:
+        result = subprocess.run(
+            ["gh", "api", endpoint],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "GitHub API request failed")
+        return json.loads(result.stdout)
+
+    try:
+        repo_data = gh_api(f"repos/{repository}")
+        branch = repo_data["default_branch"]
+        tree_data = gh_api(
+            f"repos/{repository}/git/trees/{branch}?recursive=1"
+        )
+    except (RuntimeError, KeyError, json.JSONDecodeError, subprocess.TimeoutExpired) as exc:
+        return {
+            "repository": repository,
+            "error": str(exc),
+            "read_only": True,
+        }
+
+    files = [
+        item["path"]
+        for item in tree_data.get("tree", [])
+        if item.get("type") == "blob"
+    ]
+
+    selected_names = {
+        "README.md",
+        "DOCKER-RUNBOOK.md",
+        "docker-compose.yml",
+        "compose.yaml",
+        "Dockerfile",
+        "requirements.txt",
+        "package.json",
+        ".env.example",
+        "Architecture.md",
+        "RequestFlow.md",
+    }
+    selected_paths = [
+        p for p in files
+        if p.split("/")[-1] in selected_names
+        or (p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml")))
+    ][:12]
+
+    contents = {}
+    for file_path in selected_paths:
+        try:
+            file_data = gh_api(
+                f"repos/{repository}/contents/{file_path}?ref={branch}"
+            )
+            if file_data.get("encoding") != "base64":
+                continue
+            raw = base64.b64decode(file_data["content"])
+            contents[file_path] = raw.decode("utf-8", errors="replace")[:12000]
+        except (RuntimeError, KeyError, json.JSONDecodeError, subprocess.TimeoutExpired) as exc:
+            contents[file_path] = f"Could not read file: {exc}"
+
+    return {
+        "repository": repository,
+        "description": repo_data.get("description"),
+        "default_branch": branch,
+        "file_count": len(files),
+        "truncated_file_list": len(files) > max_files,
+        "files": files[:max_files],
+        "selected_file_contents": contents,
+        "read_only": True,
+        "limitations": [
+            "Only the first 100 file paths and up to 12 selected files are returned.",
+            "Each selected file is limited to 12000 characters.",
+            "No repository writes, commits, workflow runs, deployments, or cloud changes are performed.",
         ],
     }
 
