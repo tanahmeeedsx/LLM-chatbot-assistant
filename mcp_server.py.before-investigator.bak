@@ -1,0 +1,238 @@
+import logging
+logging.basicConfig(level=logging.WARNING, stream=__import__("sys").stderr)
+from pathlib import Path
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("Kleos")
+
+PROJECT_DIR = Path(__file__).resolve().parent
+IGNORED_DIRS = {".git", ".venv", "__pycache__"}
+
+
+@mcp.tool()
+def list_project_files() -> list[str]:
+    """List files and folders in the Kleos project directory."""
+    items = []
+
+    for item in sorted(PROJECT_DIR.iterdir()):
+        if item.name in IGNORED_DIRS:
+            continue
+
+        name = item.name + ("/" if item.is_dir() else "")
+        items.append(name)
+
+    return items
+
+
+@mcp.tool()
+def get_project_info() -> dict:
+    """Get basic information about the Kleos project."""
+    files = [
+        item for item in PROJECT_DIR.iterdir()
+        if item.name not in IGNORED_DIRS and item.is_file()
+    ]
+
+    folders = [
+        item for item in PROJECT_DIR.iterdir()
+        if item.name not in IGNORED_DIRS and item.is_dir()
+    ]
+
+    return {
+        "project_name": "Kleos",
+        "project_directory": str(PROJECT_DIR),
+        "file_count": len(files),
+        "folder_count": len(folders),
+    }
+
+
+
+@mcp.tool()
+def get_github_workflow_runs(limit: int = 5) -> dict:
+    """Read recent GitHub Actions workflow runs for the DevSecOps Agent repository."""
+    import json
+    import subprocess
+
+    if not 1 <= limit <= 20:
+        return {"error": "limit must be between 1 and 20"}
+
+    command = [
+        "gh", "run", "list",
+        "-R", "tanahmeeedsx/devsecops-agent",
+        "--workflow", "DevSecOps Agent CI/CD",
+        "--limit", str(limit),
+        "--json", "databaseId,displayTitle,status,conclusion,headBranch,event,createdAt,updatedAt,url",
+    ]
+
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"error": "GitHub CLI request timed out"}
+    except OSError as error:
+        return {"error": f"Could not run GitHub CLI: {error}"}
+
+    if result.returncode != 0:
+        return {
+            "error": "GitHub CLI request failed",
+            "details": result.stderr.strip()[:2000],
+        }
+
+    try:
+        runs = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {"error": "GitHub CLI returned invalid JSON"}
+
+    return {
+        "repository": "tanahmeeedsx/devsecops-agent",
+        "workflow": "DevSecOps Agent CI/CD",
+        "count": len(runs),
+        "runs": runs,
+    }
+
+
+
+@mcp.tool()
+def get_github_run_jobs(run_id: int) -> dict:
+    """Read job statuses and step results for a GitHub Actions run in the DevSecOps Agent repository."""
+    import json
+    import subprocess
+
+    if run_id <= 0:
+        return {"error": "run_id must be a positive integer"}
+
+    command = [
+        "gh", "api",
+        f"repos/tanahmeeedsx/devsecops-agent/actions/runs/{run_id}/jobs",
+        "--jq", "{total_count: .total_count, jobs: [.jobs[] | {id: .id, name: .name, status: .status, conclusion: .conclusion, steps: [.steps[]? | {name: .name, status: .status, conclusion: .conclusion, number: .number}]}]}",
+    ]
+
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=30, check=False
+        )
+    except subprocess.TimeoutExpired:
+        return {"error": "GitHub CLI request timed out"}
+    except OSError as error:
+        return {"error": f"Could not run GitHub CLI: {error}"}
+
+    if result.returncode != 0:
+        return {
+            "error": "GitHub API request failed",
+            "details": result.stderr.strip()[:2000],
+        }
+
+    try:
+        return {
+            "repository": "tanahmeeedsx/devsecops-agent",
+            "run_id": run_id,
+            **json.loads(result.stdout),
+        }
+    except json.JSONDecodeError:
+        return {"error": "GitHub API returned invalid JSON"}
+
+
+
+@mcp.tool()
+def get_github_job_log_findings(job_id: int) -> dict:
+    """Return a limited, classified set of GitHub Actions log findings."""
+    import re
+    import subprocess
+
+    if job_id <= 0:
+        return {"error": "job_id must be a positive integer"}
+
+    command = [
+        "gh", "api",
+        f"repos/tanahmeeedsx/devsecops-agent/actions/jobs/{job_id}/logs",
+    ]
+
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=45, check=False
+        )
+    except subprocess.TimeoutExpired:
+        return {"error": "GitHub log request timed out"}
+    except OSError as error:
+        return {"error": f"Could not run GitHub CLI: {error}"}
+
+    if result.returncode != 0:
+        return {
+            "error": "GitHub log request failed",
+            "details": result.stderr.strip()[:1000],
+        }
+
+    sensitive = re.compile(
+        r"(?i)\b(token|password|passwd|secret|authorization|api[_ -]?key|private[_ -]?key)\b(\s*[:=]\s*)\S+"
+    )
+
+    def redact(line: str) -> str:
+        line = sensitive.sub(r"\1\2[REDACTED]", line)
+        line = re.sub(r"(?i)Bearer\s+\S+", "Bearer [REDACTED]", line)
+        line = re.sub(r"\bgh[pousr]_[A-Za-z0-9_]+\b", "[REDACTED_TOKEN]", line)
+        return line[:500]
+
+    findings = []
+    seen = set()
+
+    # Prefer explicit GitHub Actions annotations over keyword matching.
+    for raw_line in result.stdout.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        annotation = re.search(r"##\[(warning|error)\](.*)", line, re.I)
+        if annotation:
+            severity = annotation.group(1).lower()
+            message = annotation.group(2).strip()
+        elif re.search(r"\b(deprecated|deprecation warning)\b", line, re.I):
+            severity = "warning"
+            message = line
+        elif re.search(
+            r"\bWARNING:\s+Running pip as the ['\"]root['\"] user\b",
+            line, re.I
+        ):
+            severity = "warning"
+            message = line
+        elif re.search(r"\b(fatal error|build failed|deployment failed)\b", line, re.I):
+            severity = "error"
+            message = line
+        else:
+            # Avoid treating substrings in package names such as
+            # libgpg-error0 as actual error messages.
+            continue
+
+        clean_message = redact(message)
+        key = (severity, clean_message)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        findings.append({
+            "severity": severity,
+            "message": clean_message,
+            "source": "GitHub Actions annotation" if annotation else "log pattern",
+        })
+
+        if len(findings) >= 20:
+            break
+
+    return {
+        "repository": "tanahmeeedsx/devsecops-agent",
+        "job_id": job_id,
+        "finding_count": len(findings),
+        "findings": findings,
+        "note": (
+            "Findings are selected by explicit annotations or narrow log patterns. "
+            "This is not a complete log review; verify context before deciding "
+            "whether a finding is actionable. Secret redaction is best-effort."
+        ),
+    }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
