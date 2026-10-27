@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ Chaos AI-Powered DevOps Chatbot Assistant
+# ⚡ KLEOS AI-Powered DevOps Chatbot Assistant
 
 ### Meet **Kleos** — your AI assistant for DevOps investigation
 
