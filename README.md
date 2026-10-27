@@ -32,23 +32,23 @@
 
 ## ✨ Features
 
-- 🔎 **Workflow monitoring** — View recent GitHub Actions runs and their conclusions.
-- 🧩 **Job and step investigation** — Inspect job status and individual step outcomes.
-- 📋 **Log findings** — Surface selected errors and warnings from workflow logs.
-- 🤖 **AI-assisted troubleshooting** — Turn tool output into explanations and next steps.
-- 🗂️ **Repository inspection** — Read a remote repository's file tree and selected configuration files.
-- 🔌 **MCP tool calling** — Discover and invoke Python tools through the Model Context Protocol.
-- 💻 **Local LLM** — Run Qwen 2.5 1.5B through Ollama.
-- 🛡️ **Read-only workflow** — Designed for investigation, not automatic remediation.
+- **Workflow monitoring** — View recent GitHub Actions runs and their conclusions.
+- **Job and step investigation** — Inspect job status and individual step outcomes.
+- **Log findings** — Surface selected errors and warnings from workflow logs.
+- **AI-assisted troubleshooting** — Turn tool output into explanations and next steps.
+- **Repository inspection** — Read a remote repository's file tree and selected configuration files.
+- **MCP tool calling** — Discover and invoke Python tools through the Model Context Protocol.
+- **Local LLM** — Run Qwen 2.5 1.5B through Ollama.
+- **Read-only workflow** — Designed for investigation, not automatic remediation.
 
 ## 🖥️ Interface
 
 | Workspace | Purpose |
 |---|---|
-| 💬 **Chat** | Ask DevOps questions and start investigations. |
-| ◈ **GitHub Actions** | Explore workflow runs and CI/CD results. |
-| ▣ **Project Insights** | Review project-related information surfaced by the app. |
-| ⚙️ **Settings** | Access application configuration. |
+| **Chat** | Ask DevOps questions and start investigations. |
+| **GitHub Actions** | Explore workflow runs and CI/CD results. |
+| **Project Insights** | Review project-related information surfaced by the app. |
+| **Settings** | Access application configuration. |
 | **Recent Tool Activity** | See which MCP tools ran. |
 | **Assistant Status** | Check model, MCP availability, access mode, and connected repository. |
 
@@ -56,17 +56,24 @@
 
 <div align="center">
 
-| Technology | Role |
-|:--|:--|
-| <img src="https://skillicons.dev/icons?i=python" height="34" alt="Python"> **Python** | Agent logic and MCP tools |
-| <img src="https://skillicons.dev/icons?i=streamlit" height="34" alt="Streamlit"> **Streamlit** | Web interface |
-| <img src="https://skillicons.dev/icons?i=ollama" height="34" alt="Ollama"> **Ollama** | Local model runtime |
-| <img src="https://img.shields.io/badge/Qwen-2.5%201.5B-7C3AED?style=flat-square" height="22" alt="Qwen"> **Qwen 2.5 1.5B** | Language model |
-| <img src="https://img.shields.io/badge/MCP-Protocol-6C5CE7?style=flat-square" height="22" alt="MCP"> **MCP Python SDK** | Tool discovery and invocation |
-| <img src="https://skillicons.dev/icons?i=github" height="34" alt="GitHub"> **GitHub CLI / Actions** | Workflow and repository data |
-| <img src="https://skillicons.dev/icons?i=git" height="34" alt="Git"> **Requests** | HTTP calls to Ollama API |
+<img src="https://skillicons.dev/icons?i=python,streamlit,github,git,docker" alt="Python, Streamlit, GitHub, Git, and Docker logos" />
+<img src="https://skillicons.dev/icons?i=linux" alt="Linux logo" />
+<img src="https://img.shields.io/badge/Ollama-Local%20AI-black?style=for-the-badge&logo=ollama&logoColor=white" alt="Ollama logo" />
+<img src="https://img.shields.io/badge/Qwen-2.5%201.5B-7C3AED?style=for-the-badge" alt="Qwen 2.5 1.5B" />
+<img src="https://img.shields.io/badge/Model%20Context%20Protocol-MCP-6C5CE7?style=for-the-badge" alt="Model Context Protocol" />
+<img src="https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="GitHub Actions logo" />
 
 </div>
+
+| Technology | Role |
+|:--|:--|
+| Python | Agent logic and MCP tools |
+| Streamlit | Web interface |
+| Ollama | Local model runtime |
+| Qwen 2.5 1.5B | Language model |
+| MCP Python SDK | Tool discovery and invocation |
+| GitHub CLI / Actions | Workflow and repository data |
+| Requests | HTTP calls to Ollama API |
 
 ## 🏗️ Architecture
 
