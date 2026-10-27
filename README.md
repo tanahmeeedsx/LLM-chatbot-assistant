@@ -54,17 +54,6 @@
 
 ## 🧰 Technology Stack
 
-<div align="center">
-
-<img src="https://skillicons.dev/icons?i=python,streamlit,github,git,docker" alt="Python, Streamlit, GitHub, Git, and Docker logos" />
-<img src="https://skillicons.dev/icons?i=linux" alt="Linux logo" />
-<img src="https://img.shields.io/badge/Ollama-Local%20AI-black?style=for-the-badge&logo=ollama&logoColor=white" alt="Ollama logo" />
-<img src="https://img.shields.io/badge/Qwen-2.5%201.5B-7C3AED?style=for-the-badge" alt="Qwen 2.5 1.5B" />
-<img src="https://img.shields.io/badge/Model%20Context%20Protocol-MCP-6C5CE7?style=for-the-badge" alt="Model Context Protocol" />
-<img src="https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="GitHub Actions logo" />
-
-</div>
-
 | Technology | Role |
 |:--|:--|
 | Python | Agent logic and MCP tools |
